@@ -562,8 +562,9 @@ var avatarSynced sync.Map
 // brazilPhoneAliases devolve os formatos equivalentes de um celular brasileiro.
 //
 // Exemplos:
-//   5511912345678 -> 5511912345678, 551112345678
-//   551112345678  -> 551112345678, 5511912345678
+//
+//	5511912345678 -> 5511912345678, 551112345678
+//	551112345678  -> 551112345678, 5511912345678
 //
 // A regra é limitada ao Brasil, aos comprimentos esperados e às faixas
 // utilizadas por celulares. Telefones fixos não recebem variação.
@@ -621,7 +622,7 @@ func (c ChatwootConfig) ensureContact(chatID, phone, name, avatarURL string, alt
 	// backfill do telefone nele — em vez de criar um contato duplicado.
 	queries := make([]string, 0, 2+len(altIDs))
 	phoneQueries := map[string]bool{}
-	
+
 	if phone != "" {
 		for _, alias := range brazilPhoneAliases(phone) {
 			queries = append(queries, alias)
@@ -666,16 +667,15 @@ func (c ChatwootConfig) ensureContact(chatID, phone, name, avatarURL string, alt
 				candidatePhone := asStr(m["phone_number"])
 				if !equivalentPhone(phone, candidatePhone) {
 					continue
-					}
 				}
+			}
 			// Quando a busca auxiliar é feita por um @lid, aceita somente o contato que
 			// já possui exatamente esse mesmo identificador. O @lid não será usado como
 			// telefone: depois de localizado, o contato continua vinculado ao número real.
 			if phone != "" && !phoneQueries[query] && ident != query && attr != query {
-				continue	
+				continue
 			}
 
-			
 			// grupos/canais (busca por identifier): exige match exato do JID/attr.
 			if phone == "" && ident != chatID && attr != chatID {
 				continue

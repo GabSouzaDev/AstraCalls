@@ -48,9 +48,9 @@ func TestEnsureContactBackfill(t *testing.T) {
 			// busca pelo telefone não acha nada; busca pelo @lid acha o contato sem número.
 			if q == lid {
 				writeTestJSON(w, map[string]any{"payload": []any{map[string]any{
-					"id":            42,
-					"identifier":    lid,
-					"phone_number":  nil,
+					"id":              42,
+					"identifier":      lid,
+					"phone_number":    nil,
 					"contact_inboxes": []any{map[string]any{"inbox": map[string]any{"id": 7}, "source_id": "src-42"}},
 				}}})
 				return
@@ -96,9 +96,9 @@ func TestEnsureContactNoBackfillWhenCorrect(t *testing.T) {
 		}
 		if r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/contacts/search") {
 			writeTestJSON(w, map[string]any{"payload": []any{map[string]any{
-				"id":            9,
-				"identifier":    "5567999998888@s.whatsapp.net",
-				"phone_number":  "+5567999998888",
+				"id":              9,
+				"identifier":      "5567999998888@s.whatsapp.net",
+				"phone_number":    "+5567999998888",
 				"contact_inboxes": []any{map[string]any{"inbox": map[string]any{"id": 7}, "source_id": "src-9"}},
 			}}})
 			return
@@ -119,10 +119,10 @@ func TestEnsureContactNoBackfillWhenCorrect(t *testing.T) {
 
 func TestEnsureContactBrazilianNinthDigitAlias(t *testing.T) {
 	tests := []struct {
-		name              string
-		incomingPhone     string
-		existingPhone     string
-		expectedBackfill  string
+		name             string
+		incomingPhone    string
+		existingPhone    string
+		expectedBackfill string
 	}{
 		{
 			name:             "resposta sem nono digito encontra contato com nono digito",
@@ -159,7 +159,7 @@ func TestEnsureContactBrazilianNinthDigitAlias(t *testing.T) {
 									"phone_number": "+" + tt.existingPhone,
 									"contact_inboxes": []any{
 										map[string]any{
-											"inbox": map[string]any{"id": 7},
+											"inbox":     map[string]any{"id": 7},
 											"source_id": "src-42",
 										},
 									},
@@ -190,7 +190,7 @@ func TestEnsureContactBrazilianNinthDigitAlias(t *testing.T) {
 								"id": 99,
 								"contact_inboxes": []any{
 									map[string]any{
-										"inbox": map[string]any{"id": 7},
+										"inbox":     map[string]any{"id": 7},
 										"source_id": "src-99",
 									},
 								},
@@ -243,6 +243,50 @@ func TestEnsureContactBrazilianNinthDigitAlias(t *testing.T) {
 					"backfill inesperado: recebido=%q esperado=%q",
 					backfilledPhone,
 					tt.expectedBackfill,
+				)
+			}
+		})
+	}
+}
+
+func TestBrazilPhoneAliasesScope(t *testing.T) {
+	tests := []struct {
+		name     string
+		phone    string
+		expected string
+	}{
+		{
+			name:     "celular brasileiro sem nono digito",
+			phone:    "551187654321",
+			expected: "551187654321,5511987654321",
+		},
+		{
+			name:     "celular brasileiro com nono digito",
+			phone:    "5511987654321",
+			expected: "5511987654321,551187654321",
+		},
+		{
+			name:     "telefone fixo brasileiro permanece inalterado",
+			phone:    "551132345678",
+			expected: "551132345678",
+		},
+		{
+			name:     "telefone internacional permanece inalterado",
+			phone:    "14155552671",
+			expected: "14155552671",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := strings.Join(brazilPhoneAliases(tt.phone), ",")
+
+			if got != tt.expected {
+				t.Fatalf(
+					"aliases inesperados para %q: recebido=%q esperado=%q",
+					tt.phone,
+					got,
+					tt.expected,
 				)
 			}
 		})
