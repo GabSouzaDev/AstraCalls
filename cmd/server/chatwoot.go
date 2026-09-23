@@ -624,7 +624,7 @@ func (c ChatwootConfig) ensureContact(chatID, phone, name, avatarURL string, alt
 	
 	if phone != "" {
 		for _, alias := range brazilPhoneAliases(phone) {
-			queries = append(queries, phone)
+			queries = append(queries, alias)
 			phoneQueries[alias] = true
 		}
 	} else {
