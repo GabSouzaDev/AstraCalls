@@ -620,7 +620,7 @@ func (c ChatwootConfig) ensureContact(chatID, phone, name, avatarURL string, alt
 	// reencontrar um contato criado ANTES de resolvermos o número real e fazer o
 	// backfill do telefone nele — em vez de criar um contato duplicado.
 	queries := make([]string, 0, 2+len(altIDs))
-	phoneQueries := map[String]bool{}
+	phoneQueries := map[string]bool{}
 	
 	if phone != "" {
 		for _, alias := range brazilPhoneAliases(phone) {
