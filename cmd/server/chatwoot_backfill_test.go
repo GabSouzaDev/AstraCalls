@@ -126,14 +126,14 @@ func TestEnsureContactBrazilianNinthDigitAlias(t *testing.T) {
 	}{
 		{
 			name:             "resposta sem nono digito encontra contato com nono digito",
-			incomingPhone:    "551112345678",
-			existingPhone:    "5511912345678",
+			incomingPhone:    "551187654321",
+			existingPhone:    "5511987654321",
 			expectedBackfill: "",
 		},
 		{
 			name:             "resposta com nono digito encontra contato sem nono digito",
-			incomingPhone:    "5511912345678",
-			existingPhone:    "551112345678",
+			incomingPhone:    "5511987654321",
+			existingPhone:    "551187654321",
 			expectedBackfill: "",
 		},
 	}
