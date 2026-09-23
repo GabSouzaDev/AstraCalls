@@ -117,6 +117,138 @@ func TestEnsureContactNoBackfillWhenCorrect(t *testing.T) {
 	}
 }
 
+func TestEnsureContactBrazilianNinthDigitAlias(t *testing.T) {
+	tests := []struct {
+		name              string
+		incomingPhone     string
+		existingPhone     string
+		expectedBackfill  string
+	}{
+		{
+			name:             "resposta sem nono digito encontra contato com nono digito",
+			incomingPhone:    "556281242283",
+			existingPhone:    "5562981242283",
+			expectedBackfill: "",
+		},
+		{
+			name:             "resposta com nono digito encontra contato sem nono digito",
+			incomingPhone:    "5562981242283",
+			existingPhone:    "556281242283",
+			expectedBackfill: "+5562981242283",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var contactCreated bool
+			var backfilledPhone string
+			var searchQueries []string
+
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch {
+				case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/contacts/search"):
+					query := r.URL.Query().Get("q")
+					searchQueries = append(searchQueries, query)
+
+					if query == tt.existingPhone {
+						writeTestJSON(w, map[string]any{
+							"payload": []any{
+								map[string]any{
+									"id":           42,
+									"identifier":   tt.existingPhone + "@s.whatsapp.net",
+									"phone_number": "+" + tt.existingPhone,
+									"contact_inboxes": []any{
+										map[string]any{
+											"inbox": map[string]any{"id": 7},
+											"source_id": "src-42",
+										},
+									},
+								},
+							},
+						})
+						return
+					}
+
+					writeTestJSON(w, map[string]any{"payload": []any{}})
+
+				case r.Method == http.MethodPut && strings.HasSuffix(r.URL.Path, "/contacts/42"):
+					var body map[string]any
+					data, _ := io.ReadAll(r.Body)
+					_ = json.Unmarshal(data, &body)
+					backfilledPhone, _ = body["phone_number"].(string)
+
+					writeTestJSON(w, map[string]any{
+						"payload": map[string]any{"id": 42},
+					})
+
+				case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/contacts"):
+					contactCreated = true
+
+					writeTestJSON(w, map[string]any{
+						"payload": map[string]any{
+							"contact": map[string]any{
+								"id": 99,
+								"contact_inboxes": []any{
+									map[string]any{
+										"inbox": map[string]any{"id": 7},
+										"source_id": "src-99",
+									},
+								},
+							},
+						},
+					})
+
+				default:
+					t.Errorf("chamada inesperada: %s %s", r.Method, r.URL.Path)
+					w.WriteHeader(http.StatusNotFound)
+				}
+			}))
+			defer srv.Close()
+
+			cfg := ChatwootConfig{
+				URL:          srv.URL,
+				AccountID:    1,
+				AccountToken: "tok",
+				InboxID:      7,
+			}
+
+			chatID := tt.incomingPhone + "@s.whatsapp.net"
+
+			id, sourceID, err := cfg.ensureContact(
+				chatID,
+				tt.incomingPhone,
+				"Cliente",
+				"",
+			)
+
+			if err != nil {
+				t.Fatalf("ensureContact retornou erro: %v", err)
+			}
+
+			if id != 42 || sourceID != "src-42" {
+				t.Fatalf(
+					"deveria reutilizar contato 42, mas retornou id=%d sourceID=%q; buscas=%v",
+					id,
+					sourceID,
+					searchQueries,
+				)
+			}
+
+			if contactCreated {
+				t.Fatal("não deveria criar outro contato para a variação brasileira do mesmo número")
+			}
+
+			if backfilledPhone != tt.expectedBackfill {
+				t.Fatalf(
+					"backfill inesperado: recebido=%q esperado=%q",
+					backfilledPhone,
+					tt.expectedBackfill,
+				)
+			}
+		})
+	}
+}
+
 func writeTestJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(v)
